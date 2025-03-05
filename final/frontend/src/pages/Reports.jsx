@@ -6,6 +6,7 @@ const Reports = () => {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingReport, setEditingReport] = useState(null);
+  const [selectedReport, setSelectedReport] = useState(null);
 
   // 📌 Fetch reports from the server
   const fetchReports = async () => {
@@ -31,7 +32,7 @@ const Reports = () => {
       ...report,
       description: report.description,
       location: report.location,
-      hasCollar: report.has_collar === "yes" ? "yes" : "no", // ✅ Ensure "yes" or "no"
+      hasCollar: report.has_collar === "yes" ? "yes" : "no",
     });
   };
 
@@ -43,25 +44,27 @@ const Reports = () => {
   // 📌 Save the edited report
   const saveEdit = async () => {
     if (!editingReport) return;
-
+  
     console.log("🚀 Sending update request for:", editingReport.id);
     console.log("Payload:", {
       description: editingReport.description,
       location: editingReport.location,
-      has_collar: editingReport.hasCollar, // ✅ Fix field name
+      has_collar: editingReport.hasCollar,
+      status: editingReport.status, // ✅ Now updating status too
     });
-
+  
     try {
       await axios.put(
         `http://localhost:5000/api/reports/edit/${editingReport.id}`,
         {
           description: editingReport.description,
           location: editingReport.location,
-          has_collar: editingReport.hasCollar, // ✅ Ensure correct value is sent
+          has_collar: editingReport.hasCollar,
+          status: editingReport.status, // ✅ Send status update
         },
         { withCredentials: true }
       );
-
+  
       console.log("✅ Report updated successfully");
       fetchReports(); // ✅ Reload reports after updating
       setEditingReport(null);
@@ -69,6 +72,7 @@ const Reports = () => {
       console.error("❌ Error updating report:", error);
     }
   };
+  
 
   // 📌 Delete a report
   const handleDelete = async (id) => {
@@ -84,7 +88,7 @@ const Reports = () => {
 
       if (response.status === 200) {
         console.log("✅ Report deleted successfully");
-        fetchReports(); // ✅ Refresh the reports list
+        fetchReports();
       } else {
         console.error("❌ Error deleting report: Unexpected response", response);
       }
@@ -102,10 +106,20 @@ const Reports = () => {
         { withCredentials: true }
       );
       console.log("✅ Status updated successfully");
-      fetchReports(); // Refresh reports after update
+      fetchReports();
     } catch (error) {
       console.error("❌ Error updating status:", error);
     }
+  };
+
+  // 📌 Open Report Details in Popup
+  const openReportDetails = (report) => {
+    setSelectedReport(report);
+  };
+
+  // 📌 Close Popup
+  const closeReportDetails = () => {
+    setSelectedReport(null);
   };
 
   return (
@@ -127,7 +141,7 @@ const Reports = () => {
           </thead>
           <tbody>
             {reports.map((report) => (
-              <tr key={report.id}>
+              <tr key={report.id} onClick={() => openReportDetails(report)} style={{ cursor: "pointer" }}>
                 <td>
                   {report.image ? (
                     <img
@@ -170,77 +184,53 @@ const Reports = () => {
                     report.location
                   )}
                 </td>
+                <td>{report.has_collar === "yes" ? "כן" : "לא"}</td>
                 <td>
-                  {editingReport && editingReport.id === report.id ? (
-                    <div>
-                      <label>
-                        <input
-                          type="radio"
-                          name={`hasCollar-${report.id}`}
-                          value="yes"
-                          checked={editingReport.hasCollar === "yes"}
-                          onChange={() =>
-                            setEditingReport({
-                              ...editingReport,
-                              hasCollar: "yes",
-                            })
-                          }
-                        />{" "}
-                        כן
-                      </label>
-                      <label>
-                        <input
-                          type="radio"
-                          name={`hasCollar-${report.id}`}
-                          value="no"
-                          checked={editingReport.hasCollar === "no"}
-                          onChange={() =>
-                            setEditingReport({
-                              ...editingReport,
-                              hasCollar: "no",
-                            })
-                          }
-                        />{" "}
-                        לא
-                      </label>
-                    </div>
-                  ) : (
-                    report.has_collar === "yes" ? "כן" : "לא" // ✅ Fixed display issue
-                  )}
-                </td>
-                <td>
-                  <select
-                    value={report.status}
-                    onChange={(e) =>
-                      handleUpdateStatus(report.id, e.target.value)
-                    }
-                  >
-                    <option value="לא טופל">לא טופל</option>
-                    <option value="בטיפול">בטיפול</option>
-                    <option value="נסגר">נסגר</option>
-                  </select>
-                </td>
+  {editingReport && editingReport.id === report.id ? (
+    <select
+      value={editingReport.status}
+      onChange={(e) =>
+        setEditingReport({ ...editingReport, status: e.target.value })
+      }
+      onClick={(e) => e.stopPropagation()} // ✅ Prevents accidental popup opening
+    >
+      <option value="לא טופל">לא טופל</option>
+      <option value="בטיפול">בטיפול</option>
+      <option value="נסגר">נסגר</option>
+    </select>
+  ) : (
+    report.status
+  )}
+</td>
+
                 <td>
                   {editingReport && editingReport.id === report.id ? (
                     <>
-                      <button className="save-btn" onClick={saveEdit}>
-                        💾 שמור
-                      </button>
-                      <button className="cancel-btn" onClick={cancelEditing}>
-                        ❌ בטל
-                      </button>
+                      <button className="save-btn" onClick={(e) => { e.stopPropagation(); saveEdit(); }}>
+  💾 שמור
+</button>
+<button className="cancel-btn" onClick={(e) => { e.stopPropagation(); cancelEditing(); }}>
+  ❌ בטל
+</button>
+
                     </>
                   ) : (
                     <>
                       <button
                         className="edit-btn"
-                        onClick={() => startEditing(report)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          startEditing(report);
+                        }}
                       >
                         ✏️ ערוך
                       </button>
                       <button
                         className="delete-btn"
-                        onClick={() => handleDelete(report.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(report.id);
+                        }}
                       >
                         🗑️ מחק
                       </button>
@@ -251,6 +241,41 @@ const Reports = () => {
             ))}
           </tbody>
         </table>
+      )}
+
+      {/* ✅ Popup Modal for Report Details */}
+      {selectedReport && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2>📌 פרטי דיווח</h2>
+            {selectedReport.image ? (
+              <img
+                src={`http://localhost:5000/uploads/${selectedReport.image}`}
+                alt="Report"
+                width="300"
+                onError={(e) => {
+                  console.error("❌ Image failed to load:", e.target.src);
+                  e.target.style.display = "none";
+                }}
+              />
+            ) : (
+              <p>🔍 אין תמונה זמינה</p>
+            )}
+            <p><strong>תיאור:</strong> {selectedReport.description}</p>
+            <p><strong>מיקום:</strong> {selectedReport.location}</p>
+            <p>
+              <strong>מיקום במפה:</strong>{" "}
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${selectedReport.location}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                🔗 הצג במפה
+              </a>
+            </p>
+            <button onClick={closeReportDetails}>❌ סגור</button>
+          </div>
+        </div>
       )}
     </div>
   );

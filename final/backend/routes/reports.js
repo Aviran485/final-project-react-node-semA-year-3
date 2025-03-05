@@ -74,7 +74,7 @@ router.post("/add", async (req, res) => {
 
 // 📌 עדכון דיווח (כולל עדכון שדה "has_collar")
 router.put("/edit/:id", authMiddleware, async (req, res) => {
-  const { description, location, has_collar } = req.body;
+  const { description, location, has_collar, status } = req.body; // ✅ Add status
   const { id } = req.params;
 
   console.log(`📌 PUT /edit/${id} received`);
@@ -82,8 +82,8 @@ router.put("/edit/:id", authMiddleware, async (req, res) => {
 
   try {
     const [result] = await db.query(
-      "UPDATE reports SET description = ?, location = ?, has_collar = ? WHERE id = ?",
-      [description, location, has_collar, id]
+      "UPDATE reports SET description = ?, location = ?, has_collar = ?, status = ? WHERE id = ?",
+      [description, location, has_collar, status, id] // ✅ Now updates status too
     );
 
     if (result.affectedRows === 0) {
@@ -95,6 +95,7 @@ router.put("/edit/:id", authMiddleware, async (req, res) => {
     res.status(500).json({ message: "❌ Server Error", error });
   }
 });
+
 
 
 
